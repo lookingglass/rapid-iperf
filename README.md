@@ -32,12 +32,12 @@ This tool automatically downloads and parses public iperf3 servers from:
 
 2. **Make script executable:**
    ```bash
-   chmod +x iperf.sh
+   chmod +x rapid-iperf.sh
    ```
 
 3. **Run tool:**
    ```bash
-   ./iperf.sh
+   ./rapid-iperf.sh
    ```
 
 ---
