@@ -47,16 +47,19 @@ This tool automatically downloads and parses public iperf3 servers from:
 - [x] Automatic install of dependencies
 - [X] Favourite servers
 - [X] Fallback server feature -> Available servers selection UI
-- [ ] Classic/standard mode (Non-fzf UI)
+- [X] Classic/standard mode (Non-fzf UI)
 
 ---
 
 ## Dependencies
 * `iperf3` - Network bandwith tool
 * `fping` - ICMP check
-* `fzf` - Interactive UI
 * `jq` & `yq` - JSON and YAML servers parsing
 * `curl` - Fetching iperf3 servers
+
+# Soft-dependencies
+* `fzf` - Interactive UI
+
 ## Notes
 Dependencies will install if you are running Debian/Ubuntu or RHEL/Fedora. Other cases requires manual installation
 Still WIP
