@@ -26,7 +26,7 @@ This tool automatically downloads and parses public iperf3 servers from:
 
 1. **Clone repository:**
    ```bash
-   git clone https://github.com/resolvectl/rapid-iperf
+   git clone https://github.com/lookingglass/rapid-iperf
    cd rapid-iperf
    ```
 
@@ -47,6 +47,7 @@ This tool automatically downloads and parses public iperf3 servers from:
 - [x] Automatic install of dependencies
 - [X] Favourite servers
 - [X] Fallback server feature -> Available servers selection UI
+- [ ] Classic/standard mode (Non-fzf UI)
 
 ---
 
