@@ -57,7 +57,7 @@ This tool automatically downloads and parses public iperf3 servers from:
 * `jq` & `yq` - JSON and YAML servers parsing
 * `curl` - Fetching iperf3 servers
 
-# Soft-dependencies
+# Soft dependencies
 * `fzf` - Interactive UI
 
 ## Notes
