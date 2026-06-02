@@ -1,13 +1,18 @@
 # rapid-iperf
-Interactive CLI Bash utility for running iperf3 network tests with automatic servers from public lists
+<p align=center>
+   <img src="https://i.imgur.com/G8lJttS.png" width="50%">
+</p>
+<p align="center">
+  🚀 <strong>Interactive CLI Bash utility for running iperf3 network tests with automatic servers from public lists</strong>
+</p>
 
-## Features
+## ⚡ Features
 - Automatically downloads iperf3 public servers
 - Latency-based iperf3 server selection
 - Interactive navigation using `fzf`
 - Favourite servers feature
 
-## Available regions
+## 🌍 Available regions
 - Russia
 - Europe
 - Asia
@@ -16,13 +21,13 @@ Interactive CLI Bash utility for running iperf3 network tests with automatic ser
 - Oceania
 - Africa
 
-## How it works?
+## 🧠 How it works?
 This tool automatically downloads and parses public iperf3 servers from:
 1. https://github.com/itdoginfo/russian-iperf3-servers
 2. https://iperf3serverlist.net
 ---
 
-## Installation & Run
+## 🚀 Installation & Run
 
 1. **Clone repository:**
    ```bash
@@ -42,7 +47,7 @@ This tool automatically downloads and parses public iperf3 servers from:
 
 ---
 
-## Todo
+## 📝 Todo
 - [x] Region selection
 - [x] Automatic install of dependencies
 - [X] Favourite servers
@@ -51,15 +56,16 @@ This tool automatically downloads and parses public iperf3 servers from:
 
 ---
 
-## Dependencies
+## 📦 Dependencies
+### Important
 * `iperf3` - Network bandwith tool
 * `fping` - ICMP check
 * `jq` & `yq` - JSON and YAML servers parsing
 * `curl` - Fetching iperf3 servers
 
-# Soft dependencies
+### Soft dependencies
 * `fzf` - Interactive UI
 
-## Notes
+## 📋 Notes
 Dependencies will install if you are running Debian/Ubuntu or RHEL/Fedora. Other cases requires manual installation
 Still WIP
