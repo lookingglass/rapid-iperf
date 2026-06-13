@@ -5,6 +5,8 @@
 <p align="center">
   🚀 <strong>Interactive CLI Bash utility for running iperf3 network tests with automatic servers from public lists</strong>
 </p>
+<br>
+
 
 ## ❓ What the purpose of this tool?
 Initially i struggled a problem finding iperf3 servers. You find some iperf3 servers -> you run a test -> they are too far or just dont work -> repeat. Annoying cycle. I built a plug-and-play solution.
