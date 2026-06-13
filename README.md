@@ -7,7 +7,7 @@
 </p>
 
 ## ❓ What the purpose of this tool?
-Initially i struggled a problem finding iperf3 servers. You find some iperf3 servers -> you run a test -> they are too far or just dont work -> repeat. Annoying cycle.
+Initially i struggled a problem finding iperf3 servers. You find some iperf3 servers -> you run a test -> they are too far or just dont work -> repeat. Annoying cycle. I built a plug-and-play solution.
 
 ## ⚡ Features
 - Automatically downloads iperf3 public servers
