@@ -6,6 +6,9 @@
   🚀 <strong>Interactive CLI Bash utility for running iperf3 network tests with automatic servers from public lists</strong>
 </p>
 
+## ❓ What the purpose of this tool?
+Initially i struggled a problem finding iperf3 servers. You find some iperf3 servers -> you run a test -> they are too far or just dont work -> repeat. Annoying cycle.
+
 ## ⚡ Features
 - Automatically downloads iperf3 public servers
 - Latency-based iperf3 server selection
@@ -51,8 +54,8 @@ This tool automatically downloads and parses public iperf3 servers from:
 - [x] Region selection
 - [x] Automatic install of dependencies
 - [X] Favourite servers
-- [X] Fallback server feature -> Available servers selection UI
-- [X] Classic/standard mode (Non-fzf UI)
+- [X] Available servers selection UI
+- [X] Classic/standard mode (Non-fzf UI mode)
 
 ---
 
@@ -66,6 +69,9 @@ This tool automatically downloads and parses public iperf3 servers from:
 ### Soft dependencies
 * `fzf` - Interactive UI
 
+## 🆗 Tested on:
+- Ubuntu 24.04
+- Fedora 43
+
 ## 📋 Notes
-Dependencies will install if you are running Debian/Ubuntu or RHEL/Fedora. Other cases requires manual installation
-Still WIP
+This is my first serious open-source development attempt. I still learning and improving my Bash skills. Feedback highly appreciated. Thanks!
