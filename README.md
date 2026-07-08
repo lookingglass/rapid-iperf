@@ -75,5 +75,3 @@ This tool automatically downloads and parses public iperf3 servers from:
 - Ubuntu 24.04
 - Fedora 43
 
-## 📋 Notes
-This is my first serious open-source development attempt. I still learning and improving my Bash skills. Feedback highly appreciated. Thanks!
