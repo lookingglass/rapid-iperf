@@ -16,6 +16,7 @@ Initially i struggled a problem finding iperf3 servers. You find some iperf3 ser
 - Latency-based iperf3 server selection
 - Interactive navigation using `fzf`
 - Favourite servers feature
+- iperf params editor
 
 ## 🌍 Available regions
 - Russia
