@@ -40,7 +40,7 @@ Bash script tool for running iperf3 network tests with automatic server selectio
 
 SPINNER_PID=""
 declare REGIONS=("Russia" "Europe" "Asia" "North America" "Latin America" "Oceania" "Africa")
-declare MENU_OPTIONS=("Run test (select region)" "Test favourite servers" "Fetch newest iperf lists" "Quit")
+declare MENU_OPTIONS=("Run test (select region)" "Test favourite servers" "Fetch newest iperf lists" "iperf3 params editor" "Quit")
 
 # core
 
@@ -89,7 +89,25 @@ trap 'stop_spinner; exit 130' INT
 
 function check_requirements {
 	mkdir -p "$IPERF_FOLDER_LOCATION"
+	if [[ ! -f "$IPERF_FOLDER_LOCATION/params.txt" ]]; then
+cat > "$IPERF_FOLDER_LOCATION/params.txt" << EOU
+# rapid-iperf custom parameters for iperf3
+#
+# Docs: https://iperf.fr/iperf-doc.php
+#
+# Do NOT include -c, -p. Those params already included
+#
+# Examples:
+#	-P1			one parallel streaming
+#	-u -b 10m		UDP test at 10 mbit/s
+#	-n 1G			send 1GB while testing
+#
+# Enter your parameters on a single line below (no line breaks):
+-P1
+EOU
+	fi
 	touch "$IPERF_FOLDER_LOCATION/favourites.txt"
+
 
 	local required_packages=("jq" "yq" "fping" "iperf3" "curl")
 	local missing_packages=()
@@ -149,10 +167,13 @@ Soft dependency: fzf"
 	fi
 }
 
+
+
 function run_test {
+	IPERF_PARAMS=$(awk 'NR==13 {print $1}' "$IPERF_FOLDER_LOCATION/params.txt")
 	host=$1
 	port=$2
-	if timeout $IPERF_TIMEOUT_SEC iperf3 -c "$host" -p "$port" -P1; then
+	if timeout $IPERF_TIMEOUT_SEC iperf3 -c "$host" -p "$port" "$IPERF_PARAMS"; then
 		found=false
 		while IFS='|' read -r fav_host fav_port fav_city fav_country fav_isp; do
 			if [[ "$fav_host" == "$host" ]]; then
@@ -346,6 +367,18 @@ function choose_region {
 
 }
 
+function params_editor {
+	if command -v nano > /dev/null ; then
+		nano "$IPERF_FOLDER_LOCATION/params.txt"
+	elif command -v vi > /dev/null; then
+		vi "$IPERF_FOLDER_LOCATION/params.txt"
+	elif command -v vim > /dev/null; then
+		vim "$IPERF_FOLDER_LOCATION/params.txt"		
+	else 
+		echo "Nano or vi not found. Edit it manually at $IPERF_FOLDER_LOCATION/params.txt"
+	fi
+}
+
 function menu {
 	choose=$(printf "%s\n" "${MENU_OPTIONS[@]}" | fzf --header "$FZF_HEADER" --layout=reverse)
 	case $choose in
@@ -357,6 +390,9 @@ function menu {
 		;;
 	"Fetch newest iperf lists")
 		fetch_iperf
+		;;
+	"iperf3 params editor")
+		params_editor
 		;;
 	"Quit")
 		exit 1
@@ -382,6 +418,11 @@ function legacy_menu {
 		"Fetch newest iperf lists")
 			fetch_iperf
 			break
+			;;
+		"iperf3 params editor")
+			params_editor
+			break
+			
 			;;
 		"Quit")
 			exit 1
