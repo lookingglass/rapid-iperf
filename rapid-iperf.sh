@@ -170,7 +170,7 @@ Soft dependency: fzf"
 
 
 function run_test {
-	IPERF_PARAMS=$(awk 'NR==13 {print $1}' "$IPERF_FOLDER_LOCATION/params.txt")
+	IPERF_PARAMS=$(awk 'NR==13 {print $0}' "$IPERF_FOLDER_LOCATION/params.txt")
 	host=$1
 	port=$2
 	if timeout $IPERF_TIMEOUT_SEC iperf3 -c "$host" -p "$port" "$IPERF_PARAMS"; then
