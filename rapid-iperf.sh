@@ -24,6 +24,10 @@ readonly FPING_CMD="fping -e -q -C 1 -r 0 -B 1 -4 -t 500"
 
 # colors
 
+readonly COLOR_GREEN=$'\e[92m'
+readonly COLOR_YELLOW=$'\e[93m'
+readonly UNDERLINE=$'\e[4m'
+
 readonly PING_COLOR_LOW="\e[1;32m"
 readonly PING_COLOR_MEDIUM="\e[1;33m"
 readonly PING_COLOR_HIGH="\e[1;31m"
@@ -33,8 +37,11 @@ readonly BLUE_BACKGROUND=$'\e[104m'
 
 # misc
 
-readonly FZF_HEADER="rapid-iperf
+VERSION="1.2.1"
+update_available=""
+readonly FZF_HEADER="rapid-iperf $VERSION 
 Bash script tool for running iperf3 network tests with automatic server selection based on latency"
+
 
 # do not edit below
 
@@ -88,6 +95,8 @@ stop_spinner() {
 trap 'stop_spinner; exit 130' INT
 
 function check_requirements {
+	check_for_updates
+
 	mkdir -p "$IPERF_FOLDER_LOCATION"
 	if [[ ! -f "$IPERF_FOLDER_LOCATION/params.txt" ]]; then
 cat > "$IPERF_FOLDER_LOCATION/params.txt" << EOU
@@ -185,7 +194,7 @@ function run_test {
 			read -r -p "Save this server to favourites? [y/N]: " answer
 
 			if [[ "$answer" =~ ^[Yy] ]]; then
-				echo "$best_server" >>"$IPERF_FOLDER_LOCATION/favourites.txt"
+				echo "$host|$port|$city|$country|$isp" >>"$IPERF_FOLDER_LOCATION/favourites.txt"
 			fi
 		fi
 	else
@@ -380,7 +389,7 @@ function params_editor {
 }
 
 function menu {
-	choose=$(printf "%s\n" "${MENU_OPTIONS[@]}" | fzf --header "$FZF_HEADER" --layout=reverse)
+	choose=$(printf "%s\n" "${MENU_OPTIONS[@]}" | fzf --header "$FZF_HEADER		$update_available" --layout=reverse)
 	case $choose in
 	"Run test (select region)")
 		choose_region
@@ -402,6 +411,8 @@ function menu {
 }
 
 function legacy_menu {
+	printf "%s\n" "$update_available
+	"
 	printf "%s\n" "$FZF_HEADER
 "
 	echo "Current mode $UI_MODE"
@@ -430,6 +441,18 @@ function legacy_menu {
 		*) ;;
 		esac
 	done
+}
+
+function check_for_updates {
+	REPO_URL="https://github.com/lookingglass/rapid-iperf"
+	VERSION_FILE="https://raw.githubusercontent.com/lookingglass/rapid-iperf/refs/heads/main/.github/version"
+	if ! LATEST_VERSION=$(curl -fsSL  --connect-timeout 1 --max-time 1 "$VERSION_FILE" 2>/dev/null); then
+		echo "Failed to check updates"
+	else
+		if [ "$VERSION" != "$LATEST_VERSION" ]; then
+			update_available="Newest version available: $COLOR_GREEN$LATEST_VERSION$RESET - $COLOR_YELLOW$UNDERLINE$REPO_URL$RESET"
+		fi
+	fi
 }
 
 check_requirements
