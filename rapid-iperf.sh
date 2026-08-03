@@ -37,7 +37,7 @@ readonly BLUE_BACKGROUND=$'\e[104m'
 
 # misc
 
-VERSION="1.2.1"
+VERSION="1.2.2"
 update_available=""
 readonly FZF_HEADER="rapid-iperf $VERSION 
 Bash script tool for running iperf3 network tests with automatic server selection based on latency"
