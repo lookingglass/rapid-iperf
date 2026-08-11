@@ -59,6 +59,8 @@ This tool automatically downloads and parses public iperf3 servers from:
 - [X] Favourite servers
 - [X] Available servers selection UI
 - [X] Classic/standard mode (Non-fzf UI mode)
+- [ ] New UI
+- [ ] CLI mode
 
 ---
 
