@@ -3,7 +3,7 @@
    <img src="https://i.imgur.com/G8lJttS.png" width="50%">
 </p>
 <p align="center">
-  🚀 <strong>Interactive CLI Bash utility for running iperf3 network tests with automatic servers from public lists</strong>
+  🚀 <strong>Interactive Bash utility for running iperf3 network tests with automatic servers from public lists</strong>
 </p>
 <br>
 
@@ -16,7 +16,7 @@ Initially i struggled a problem finding iperf3 servers. You find some iperf3 ser
 - Latency-based iperf3 server selection
 - Interactive navigation using `fzf`
 - Favourite servers feature
-- iperf params editor
+- iperf3 params editor
 
 ## 🌍 Available regions
 - Russia
