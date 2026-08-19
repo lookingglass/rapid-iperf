@@ -7,6 +7,9 @@
 </p>
 <br>
 
+## 2.0.0-beta.1 is available now
+It brings own TUI, CLI mode and other improvements:
+<br>https://github.com/lookingglass/rapid-iperf/tree/dev
 
 ## ❓ What the purpose of this tool?
 Initially i struggled a problem finding iperf3 servers. You find some iperf3 servers -> you run a test -> they are too far or just dont work -> repeat. Annoying cycle. I built a plug-and-play solution.
