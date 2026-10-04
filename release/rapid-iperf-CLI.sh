@@ -5,7 +5,7 @@ set -euo pipefail
 
 ## config
 
-readonly VERSION="2.0.0-beta.1-cli"
+readonly VERSION="2.0.0-release"
 readonly REPO_URL="https://github.com/lookingglass/rapid-iperf"
 
 readonly IP_VERSION="4" # fping IP version: 4 or 6
