@@ -11,12 +11,23 @@
 ## ❓ What the purpose of this tool?
 Initially i struggled a problem finding iperf3 servers. You find some iperf3 servers -> you run a test -> they are too far or just dont work -> repeat. Annoying cycle. I built a plug-and-play solution.
 
+<p align="center">
+
+| File | Mode | Description |
+|---|---|---|
+| `rapid-iperf.sh` | TUI + CLI | Full version. Launches the TUI when run without arguments |
+| `rapid-iperf-CLI.sh` | CLI only | Lightweight CLI-only version. Run it to see the available options |
+
+</p>
+
 ## ⚡ Features
 - Automatically downloads iperf3 public servers
 - Latency-based iperf3 server selection
-- Interactive navigation using `fzf`
+- Interactive TUI (arrow navigation) + CLI modes
+- Managing direction (Upload/Download/Both)
 - Favourite servers feature
-- iperf params editor
+- Iperf3 params editor
+- Automatic install of dependencies
 
 ## 🌍 Available regions
 - Russia
@@ -33,7 +44,7 @@ This tool automatically downloads and parses public iperf3 servers from:
 2. https://iperf3serverlist.net
 ---
 
-## 🚀 Installation & Run
+## 🚀 Usage
 
 1. **Clone repository:**
    ```bash
@@ -50,17 +61,17 @@ This tool automatically downloads and parses public iperf3 servers from:
    ```bash
    ./rapid-iperf.sh
    ```
-
 ---
+
 
 ## 📝 Todo
 - [x] Region selection
 - [x] Automatic install of dependencies
 - [X] Favourite servers
 - [X] Available servers selection UI
-- [X] Classic/standard mode (Non-fzf UI mode)
-- [ ] New UI
-- [ ] CLI mode
+- [X] Classic/standard mode (Non-fzf UI mode) (fzf mode is deprecated, replaced with own UI)
+- [X] New UI
+- [X] CLI mode
 
 ---
 
@@ -71,10 +82,10 @@ This tool automatically downloads and parses public iperf3 servers from:
 * `jq` & `yq` - JSON and YAML servers parsing
 * `curl` - Fetching iperf3 servers
 
-### Soft dependencies
-* `fzf` - Interactive UI
 
 ## 🆗 Tested on:
-- Ubuntu 24.04
-- Fedora 43
+
+* ![Ubuntu 24.04](https://img.shields.io/badge/Ubuntu_24.04-E95420?logo=ubuntu&logoColor=white)<br>
+* ![Fedora 43](https://img.shields.io/badge/Fedora_43-51A2DA?logo=fedora&logoColor=white)<br>
+* ![AlmaLinux 9.6](https://img.shields.io/badge/AlmaLinux_9.6-0F4266?logo=almalinux&logoColor=white)<br>
 
