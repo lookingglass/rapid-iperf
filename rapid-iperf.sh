@@ -3,7 +3,7 @@
 
 ## config
 
-VERSION="2.0.0-release"
+VERSION="2.0.1"
 update_available=""
 REPO_URL="https://github.com/lookingglass/rapid-iperf"
 
@@ -149,14 +149,22 @@ function ui_clear_below {
 }
 
 function init_tui_terminal {
+	STTY_SAVED=$(stty -g 2>/dev/null || true)
+	stty -echo 2>/dev/null || true
 	tput smcup 2>/dev/null || true
 	tput civis 2>/dev/null || true
 }
 
 function cleanup() {
+	if [[ -n "${STTY_SAVED:-}" ]]; then
+		stty "$STTY_SAVED" 2>/dev/null || true
+	else
+		stty echo 2>/dev/null || true
+	fi
 	tput cnorm 2>/dev/null || true
 	tput rmcup 2>/dev/null || true
 }
+
 function on_interrupt() {
 	cleanup
 	exit 130
@@ -557,7 +565,9 @@ function run_test {
 			fi
 
 			if ! $found; then
+				stty echo 2>/dev/null || true
 				read -r -p "Save this server to favourites? [y/N]: " answer
+				stty -echo 2>/dev/null || true
 				if [[ "$answer" =~ ^[Yy] ]]; then
 					echo "$host|$port|$city|$country|$isp" >>"$IPERF_FOLDER_LOCATION/favourites.txt"
 				fi
@@ -821,15 +831,12 @@ function choose_region {
 			find_best_server "$cmd"
 		else
 			status "set" "${COLOR_RED}Error: ${RESET}You have to fetch servers first. Press ${COLOR_YELLOW}Fetch newest servers${RESET} to continue"
-			#read -n 1 -s -r -p "Fetch servers first. Press any key to continue ..."
 		fi
 
 	else
 		if cmd=$(jq -r --arg choose "$choose" \
 			'.[] | select(.CONTINENT == $choose)."IP/HOST"+"|"+."PORT"+"|"+."SITE"+"|"+."COUNTRY"+"|"+."PROVIDER"' "$iperf_global"); then
 			find_best_server "$cmd"
-			#else
-			#read -n 1 -s -r -p "Fetch servers first. Press any key to continue ..."
 		fi
 	fi
 }
