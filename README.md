@@ -21,7 +21,7 @@ You find some iperf3 servers -> you run a test -> they are too far or just dont 
 </p>
 
 ## ⚡ Features
-- Automatically downloads iperf3 public servers
+- Managin server-lists
 - Latency-based iperf3 server selection
 - Interactive TUI (arrow navigation) + CLI modes
 - Managing direction (Upload/Download/Both)
@@ -30,7 +30,7 @@ You find some iperf3 servers -> you run a test -> they are too far or just dont 
 - Automatic install of dependencies
 
 ## 🌍 Available regions
-- Russia
+- Russia 
 - Europe
 - Asia
 - North America
@@ -65,13 +65,8 @@ This tool automatically downloads and parses public iperf3 servers from:
 
 
 ## 📝 Todo
-- [x] Region selection
-- [x] Automatic install of dependencies
-- [X] Favourite servers
-- [X] Available servers selection UI
-- [X] Classic/standard mode (Non-fzf UI mode) (upd: fzf mode is deprecated, replaced with own UI)
-- [X] New UI
-- [X] CLI mode
+- [x] Run out of ideas.
+
 
 ---
 
@@ -88,4 +83,4 @@ This tool automatically downloads and parses public iperf3 servers from:
 * ![Ubuntu 24.04](https://img.shields.io/badge/Ubuntu_24.04-E95420?logo=ubuntu&logoColor=white)<br>
 * ![Fedora 43](https://img.shields.io/badge/Fedora_43-51A2DA?logo=fedora&logoColor=white)<br>
 * ![AlmaLinux 9.6](https://img.shields.io/badge/AlmaLinux_9.6-0F4266?logo=almalinux&logoColor=white)<br>
-
+* ![Rocky Linux 10](https://img.shields.io/badge/Rocky%20Linux-10B981?logo=rockylinux&logoColor=fff)<br>
