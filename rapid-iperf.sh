@@ -3,7 +3,7 @@
 
 ## config
 
-VERSION="2.0.1"
+VERSION="2.1.0"
 update_available=""
 REPO_URL="https://github.com/lookingglass/rapid-iperf"
 
@@ -16,6 +16,7 @@ readonly IPERF_SERVERS_GLOBAL_FILENAME="iperf_global.json"
 readonly IPERF_SERVERS_RU_FILENAME="iperf_ru.yaml"
 readonly IPERF_SERVERS_GLOBAL_FILE_LOCATION="$IPERF_FOLDER_LOCATION/$IPERF_SERVERS_GLOBAL_FILENAME"
 readonly IPERF_SERVERS_RU_FILE_LOCATION="$IPERF_FOLDER_LOCATION/$IPERF_SERVERS_RU_FILENAME"
+readonly LISTS_CONF="$IPERF_FOLDER_LOCATION/lists.conf"
 
 readonly IPERF_GLOBAL_LIST_URL="https://export.iperf3serverlist.net/listed_iperf3_servers.json"
 readonly IPERF_RU_LIST_URL="https://raw.githubusercontent.com/itdoginfo/russian-iperf3-servers/refs/heads/main/list.yml"
@@ -44,6 +45,14 @@ selected_direction_mode="Both"
 
 required_packages=("jq" "yq" "fping" "iperf3" "curl")
 missing_packages=()
+
+declare -A LIST_ENABLED=([global]=1 [ru]=1)
+
+MENU_INDEX=0
+MENU_KEY=""
+MENU_START=0
+MENU_HOTKEYS=""
+MENU_MSG=""
 
 MODE="TUI"
 REGION=""
@@ -148,6 +157,77 @@ function ui_clear_below {
 	printf "\e[J"
 }
 
+function ui_render {
+	local frame="$1"
+	local nl=$'\n' el=$'\e[K'
+	printf '\e[H%s\e[K\e[J' "${frame//$nl/$el$nl}"
+}
+
+function select_menu {
+	local title="$1" hint="$2"
+	shift 2
+	local -a items=("$@")
+	local cur=$MENU_START hotkeys="$MENU_HOTKEYS" msg="$MENU_MSG"
+	local frame i key rest plain
+	local ansi_re=$'\e\\[[0-9;]*m'
+
+	MENU_START=0
+	MENU_HOTKEYS=""
+	MENU_MSG=""
+	((cur >= ${#items[@]})) && cur=0
+
+	while true; do
+		frame="${COLOR_LAVENDER}${BOLD}${title}${RESET}"$'\n\n'
+		for i in "${!items[@]}"; do
+			if ((i == cur)); then
+				plain="${items[$i]}"
+				while [[ "$plain" =~ $ansi_re ]]; do
+					plain="${plain//"${BASH_REMATCH[0]}"/}"
+				done
+				frame+=$'\e[7m> '"$plain"$'\e[0m\n'
+			else
+				frame+="  ${items[$i]}"$'\n'
+			fi
+		done
+		frame+=$'\n'"${COLOR_LAVENDER}${BOLD}${hint}${RESET}"
+		if [[ -n "$msg" ]]; then
+			frame+=$'\n\n'"$msg"
+		fi
+		ui_render "$frame"
+
+		IFS= read -rsn1 key
+		if [[ "$key" == $'\x1b' ]]; then
+			rest=""
+			IFS= read -rsn2 -t 0.05 rest || true
+			key+="$rest"
+		fi
+
+		case "$key" in
+		$'\x1b[A')
+			cur=$(((cur - 1 + ${#items[@]}) % ${#items[@]}))
+			;;
+		$'\x1b[B')
+			cur=$(((cur + 1) % ${#items[@]}))
+			;;
+		$'\x1b[C' | "")
+			MENU_INDEX=$cur
+			MENU_KEY="enter"
+			return 0
+			;;
+		$'\x1b[D' | $'\x1b')
+			return 1
+			;;
+		*)
+			if ((${#key} == 1)) && [[ "$hotkeys" == *"$key"* ]]; then
+				MENU_INDEX=$cur
+				MENU_KEY="$key"
+				return 0
+			fi
+			;;
+		esac
+	done
+}
+
 function init_tui_terminal {
 	STTY_SAVED=$(stty -g 2>/dev/null || true)
 	stty -echo 2>/dev/null || true
@@ -174,7 +254,7 @@ function spinner() {
 	local msg="$1"
 	while true; do
 		for f in ⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏; do
-			printf "\r%s %s" "$f" "$msg"
+			printf "\r\e[K%s %s" "$f" "$msg"
 			sleep 0.1
 		done
 	done
@@ -195,16 +275,23 @@ function stop_spinner() {
 }
 
 function get_servers_count() {
-	if [[ -e "$IPERF_SERVERS_GLOBAL_FILE_LOCATION" && -e "$IPERF_SERVERS_RU_FILE_LOCATION" ]]; then
-		servers_loaded_global=$(jq 'length' "$IPERF_SERVERS_GLOBAL_FILE_LOCATION" 2>/dev/null || echo 0)
-		servers_loaded_ru=$(yq 'length' "$IPERF_SERVERS_RU_FILE_LOCATION" 2>/dev/null || echo 0)
-		servers_loaded_total=$((servers_loaded_ru + servers_loaded_global))
-	else
-		servers_loaded_total=0
-
+	local g=0 r=0 total=0
+	if [[ -s "$IPERF_SERVERS_GLOBAL_FILE_LOCATION" ]]; then
+		g=$(jq 'length' "$IPERF_SERVERS_GLOBAL_FILE_LOCATION" 2>/dev/null || echo 0)
 	fi
-
-	printf "%s" "$servers_loaded_total"
+	if [[ -s "$IPERF_SERVERS_RU_FILE_LOCATION" ]]; then
+		r=$(yq 'length' "$IPERF_SERVERS_RU_FILE_LOCATION" 2>/dev/null || echo 0)
+	fi
+	servers_loaded_global=$g
+	servers_loaded_ru=$r
+	if [[ "${LIST_ENABLED[global]}" == 1 ]]; then
+		total=$((total + g))
+	fi
+	if [[ "${LIST_ENABLED[ru]}" == 1 ]]; then
+		total=$((total + r))
+	fi
+	servers_loaded_total=$total
+	printf "%s" "$total"
 }
 
 function build_header {
@@ -242,7 +329,7 @@ function build_header {
 	printf -v line4 '%bDirection mode:%b %b%s%b' \
 		"$COLOR_TEXT" "$RESET" "$COLOR_BLUE" "$selected_direction_mode" "$RESET"
 
-	printf -v line5 '%bTotal servers:%b %b%s%b' \
+	printf -v line5 '%bServers loaded:%b %b%s%b' \
 		"$COLOR_TEXT" "$RESET" "$COLOR_GREEN" "$servers_count" "$RESET"
 
 	printf -v line6 '%bFavourites:%b %b%s%b' \
@@ -390,10 +477,9 @@ function parse_args {
 				COUNT="$2"
 				shift 2
 			fi
-			if [[ "$COUNT" =~ ^[0-9]+$ && "$COUNT" -ge 1 ]]; then
+			if ! [[ "$COUNT" =~ ^[0-9]+$ && "$COUNT" -ge 1 ]]; then
 				echo "--count must be int > 0"
 				exit 1
-
 			fi
 			;;
 		--direction | --direction=*)
@@ -458,7 +544,7 @@ options=(
 	"Favourite servers"
 	"Direction mode"
 	"iperf3 params editor"
-	"Fetch newest servers"
+	"Lists management"
 	"Quit"
 )
 
@@ -469,25 +555,26 @@ options_install=(
 
 selected=0
 function draw() {
-	local i
+	local i frame
+	local -a list
 
-	ui_cursor_home
-	build_header
-	if [[ ! ${#missing_packages[@]} == 0 ]]; then
-		for i in "${!options_install[@]}"; do
-			[ "$i" -eq "$selected" ] && echo -e " ${COLOR_BLUE}${BOLD}❯ ${options_install[$i]}${RESET}" || echo -e "   ${COLOR_TEXT}${options_install[$i]}${RESET}"
-		done
+	if ((${#missing_packages[@]} != 0)); then
+		list=("${options_install[@]}")
 	else
-
-		for i in "${!options[@]}"; do
-			[ "$i" -eq "$selected" ] && echo -e " ${COLOR_BLUE}${BOLD}❯ ${options[$i]}${RESET}" || echo -e "   ${COLOR_TEXT}${options[$i]}${RESET}"
-		done
+		list=("${options[@]}")
 	fi
 
-	echo -e "\n${COLOR_LAVENDER}${BOLD}[↑/↓ Navigate | Enter/→ Select]${RESET}"
-	printf '\n%s\e[K\n' "$msgbar"
+	frame="$(build_header)"$'\n\n'
+	for i in "${!list[@]}"; do
+		if ((i == selected)); then
+			frame+=" ${COLOR_BLUE}${BOLD}❯ ${list[$i]}${RESET}"$'\n'
+		else
+			frame+="   ${COLOR_TEXT}${list[$i]}${RESET}"$'\n'
+		fi
+	done
+	frame+=$'\n'"${COLOR_LAVENDER}${BOLD}[↑/↓ Navigate | Enter/→ Select]${RESET}"$'\n\n'"$msgbar"
 
-	ui_clear_below
+	ui_render "$frame"
 }
 
 function run_test {
@@ -590,6 +677,8 @@ function find_best_server {
 	cmd=$1
 	mapfile -t servers < <(printf "%s\n" "$cmd")
 	local total=${#servers[@]}
+	ui_cursor_home
+	ui_clear_below
 	start_spinner "Pinging $total servers..."
 
 	FPING_CMD="$FPING_CMD_BASE -$IP_version"
@@ -600,7 +689,6 @@ function find_best_server {
 			sort -k2 -n
 	)
 	stop_spinner
-	mapfile -t best_ip < <(printf "%s\n" "${best_ip[@]}")
 	best_ip+=("Back")
 
 	local selected=0
@@ -769,78 +857,6 @@ function cli_find_best_server {
 	fi
 }
 
-function choose_region {
-	local iperf_global="$IPERF_SERVERS_GLOBAL_FILE_LOCATION"
-	local iperf_ru="$IPERF_SERVERS_RU_FILE_LOCATION"
-	local -a menu_items=("${REGIONS[@]}" "Back")
-	local selected=0
-	local key rest i
-
-	while true; do
-		ui_cursor_home
-
-		for i in "${!menu_items[@]}"; do
-			if ((i == selected)); then
-				printf "\e[7m> %s\e[0m\e[K\n" "${menu_items[$i]}"
-			else
-				printf "  %s\e[K\n" "${menu_items[$i]}"
-			fi
-		done
-
-		ui_clear_below
-
-		IFS= read -rsn1 key
-		if [[ "$key" == $'\x1b' ]]; then
-			IFS= read -rsn2 -t 0.05 rest
-			[[ -n "$rest" ]] && key+="$rest"
-		fi
-
-		case "$key" in
-		$'\x1b[A')
-			selected=$((selected - 1))
-			if ((selected < 0)); then
-				selected=$((${#menu_items[@]} - 1))
-			fi
-			;;
-		$'\x1b[B')
-			selected=$((selected + 1))
-			if ((selected >= ${#menu_items[@]})); then
-				selected=0
-			fi
-			;;
-		$'\x1b[C' | "")
-			ui_cursor_home
-			ui_clear_below
-			choose="${menu_items[$selected]}"
-			break
-			;;
-		$'\x1b')
-			ui_cursor_home
-			ui_clear_below
-			return 0
-			;;
-		esac
-	done
-
-	if [[ $choose == "Back" ]]; then
-		return 0
-	fi
-
-	if [[ $choose == "Russia" ]]; then
-		if cmd=$(yq -r '.[] | "\(.address)|\(.port)|\(.City)|RU|\(.Name)"' "$iperf_ru"); then
-			find_best_server "$cmd"
-		else
-			status "set" "${COLOR_RED}Error: ${RESET}You have to fetch servers first. Press ${COLOR_YELLOW}Fetch newest servers${RESET} to continue"
-		fi
-
-	else
-		if cmd=$(jq -r --arg choose "$choose" \
-			'.[] | select(.CONTINENT == $choose)."IP/HOST"+"|"+."PORT"+"|"+."SITE"+"|"+."COUNTRY"+"|"+."PROVIDER"' "$iperf_global"); then
-			find_best_server "$cmd"
-		fi
-	fi
-}
-
 function iperf3_params_editor {
 	if command -v nano >/dev/null; then
 		nano "$IPERF_FOLDER_LOCATION/params.txt"
@@ -936,51 +952,194 @@ function select_favourite {
 	run_test "$host" "$port"
 }
 
+function fetch_list {
+	local url dest tmp ok=false
+
+	case "${1,,}" in
+	global)
+		url="$IPERF_GLOBAL_LIST_URL"
+		dest="$IPERF_SERVERS_GLOBAL_FILE_LOCATION"
+		;;
+	ru)
+		url="$IPERF_RU_LIST_URL"
+		dest="$IPERF_SERVERS_RU_FILE_LOCATION"
+		;;
+	*)
+		return 2
+		;;
+	esac
+	tmp="$dest.tmp"
+
+	if curl -fsSL --connect-timeout 5 --max-time 30 "$url" -o "$tmp" 2>/dev/null; then
+		case "${1,,}" in
+		global)
+			iconv -f UTF-8 -t ASCII//TRANSLIT -c "$tmp" >"$tmp.conv" 2>/dev/null &&
+				mv "$tmp.conv" "$tmp" &&
+				jq -e 'type == "array" and length > 0' "$tmp" >/dev/null 2>&1 &&
+				ok=true
+			;;
+		ru)
+			yq 'length' "$tmp" >/dev/null 2>&1 && ok=true
+			;;
+		esac
+	fi
+
+	if $ok; then
+		mv "$tmp" "$dest"
+	else
+		rm -f "$tmp" "$tmp.conv"
+		return 1
+	fi
+}
+
 function fetch_iperf_cli {
+	local target
 	echo "Fetching newest iperf3 server lists..."
-
-	if curl --connect-timeout 5 -fsSL "$IPERF_GLOBAL_LIST_URL" -o "$IPERF_SERVERS_GLOBAL_FILE_LOCATION.tmp"; then
-		iconv -f UTF-8 -t ASCII//TRANSLIT -c "$IPERF_SERVERS_GLOBAL_FILE_LOCATION.tmp" >"$IPERF_SERVERS_GLOBAL_FILE_LOCATION"
-		rm -f "$IPERF_SERVERS_GLOBAL_FILE_LOCATION.tmp"
-	else
-		echo "${COLOR_RED}Error:${RESET} Failed to reach ${COLOR_YELLOW}$IPERF_GLOBAL_LIST_URL${RESET}" >&2
-	fi
-
-	if curl --connect-timeout 5 -fsSL "$IPERF_RU_LIST_URL" -o "$IPERF_SERVERS_RU_FILE_LOCATION.tmp"; then
-		mv "$IPERF_SERVERS_RU_FILE_LOCATION.tmp" "$IPERF_SERVERS_RU_FILE_LOCATION"
-	else
-		echo "${COLOR_RED}Error:${RESET} Failed to reach ${COLOR_YELLOW}$IPERF_RU_LIST_URL${RESET}" >&2
-	fi
-
+	for target in global ru; do
+		if fetch_list "$target"; then
+			echo "Fetched $target list"
+		else
+			echo "${COLOR_RED}Error:${RESET} Failed to fetch $target list" >&2
+		fi
+	done
 	echo "Done."
 }
 
-function fetch_iperf {
-	start_spinner "Fetching newest iperf servers"
-	local iperf_global="$IPERF_SERVERS_GLOBAL_FILE_LOCATION"
-	local iperf_ru="$IPERF_SERVERS_RU_FILE_LOCATION"
-	if curl --connect-timeout 5 https://export.iperf3serverlist.net/listed_iperf3_servers.json -o "$iperf_global.tmp" >/dev/null 2>&1; then
-		iconv -f UTF-8 -t ASCII//TRANSLIT -c "$iperf_global.tmp" >"$iperf_global"
-	else
-		stop_spinner
-		status "set" "${COLOR_RED}Error: ${RESET}Failed to reach ${COLOR_YELLOW}https://export.iperf3serverlist.net/listed_iperf3_servers.json"
-		#read -n 1 -s -r -p "Press any key to continue ..."
+function lists_management {
+	local -a names=(global ru)
+	local -A labels=([global]="Global" [ru]="Russia")
+	local -A counts=()
+	local -a items=() targets=() errors=()
+	local name mark info n idx key t start=0 msg=""
+
+	while true; do
+		get_servers_count >/dev/null
+		counts=([global]=$servers_loaded_global [ru]=$servers_loaded_ru)
+
+		items=()
+		for name in "${names[@]}"; do
+			mark="[ ]"
+			if [[ "${LIST_ENABLED[$name]}" == 1 ]]; then
+				mark="[x]"
+			fi
+			n=${counts[$name]}
+			if ((n > 0)); then
+				info="$n servers"
+			else
+				info="not fetched"
+			fi
+			items+=("$(printf '%s %-8s %s' "$mark" "${labels[$name]}" "$info")")
+		done
+		items+=("Fetch all lists" "Back")
+
+		MENU_START=$start
+		MENU_HOTKEYS="f"
+		MENU_MSG="$msg"
+		msg=""
+		select_menu "Lists management" "[↑/↓ Navigate | Enter Enable/Disable | [f] Fetch selected | Esc Back]" "${items[@]}" || return 0
+		idx=$MENU_INDEX
+		key=$MENU_KEY
+		start=$idx
+		targets=()
+
+		if ((idx < ${#names[@]})); then
+			name="${names[$idx]}"
+			if [[ "$key" == "f" ]]; then
+				targets=("$name")
+			else
+				if [[ "${LIST_ENABLED[$name]}" == 1 ]]; then
+					LIST_ENABLED[$name]=0
+				else
+					LIST_ENABLED[$name]=1
+				fi
+				printf 'global=%s\nru=%s\n' "${LIST_ENABLED[global]}" "${LIST_ENABLED[ru]}" >"$LISTS_CONF"
+			fi
+		elif ((idx == ${#names[@]})); then
+			targets=("${names[@]}")
+		else
+			if [[ "$key" == "f" ]]; then
+				continue
+			fi
+			return 0
+		fi
+
+		if ((${#targets[@]} > 0)); then
+			errors=()
+			start_spinner "Fetching ${targets[*]}"
+			for t in "${targets[@]}"; do
+				fetch_list "$t" || errors+=("$t")
+			done
+			stop_spinner
+			if ((${#errors[@]} == 0)); then
+				msg="${COLOR_GREEN}Fetched: ${targets[*]}${RESET}"
+			else
+				msg="${COLOR_RED}Error: ${RESET}failed to fetch: ${errors[*]}"
+			fi
+		fi
+	done
+}
+
+function choose_region {
+	local -a names=() items=()
+	local -A counts=()
+	local name cnt n idx cmd start=0 msg="" row
+
+	if [[ "${LIST_ENABLED[global]}" == 1 && -s "$IPERF_SERVERS_GLOBAL_FILE_LOCATION" ]]; then
+		while read -r cnt name; do
+			counts["$name"]=$cnt
+		done < <(jq -r '.[].CONTINENT' "$IPERF_SERVERS_GLOBAL_FILE_LOCATION" 2>/dev/null | sort | uniq -c)
 	fi
-	if curl --connect-timeout 5 https://raw.githubusercontent.com/itdoginfo/russian-iperf3-servers/refs/heads/main/list.yml -o "$iperf_ru.tmp" >/dev/null 2>&1; then
-		mv "$iperf_ru.tmp" "$iperf_ru"
-	else
-		stop_spinner
-		status "set" "${COLOR_RED}Error: ${RESET}Failed to reach ${COLOR_YELLOW}https://raw.githubusercontent.com/itdoginfo/russian-iperf3-servers/refs/heads/main/list.yml"
-		#read -n 1 -s -r -p "Press any key to continue ..."
+	if [[ "${LIST_ENABLED[ru]}" == 1 && -s "$IPERF_SERVERS_RU_FILE_LOCATION" ]]; then
+		counts["Russia"]=$(yq 'length' "$IPERF_SERVERS_RU_FILE_LOCATION" 2>/dev/null || echo 0)
 	fi
-	stop_spinner
-	status "set" "Fetched servers"
-	draw
-	return 0
+
+	for name in "${REGIONS[@]}"; do
+		n=${counts[$name]:-0}
+		if ((n > 0)); then
+			names+=("$name")
+			printf -v row '%-16s %s%s%s servers' \
+				"$name" "$COLOR_GREEN" "$n" "$RESET"
+			items+=("$row")
+		fi
+	done
+
+	if ((${#names[@]} == 0)); then
+		status "set" "${COLOR_RED}Error: ${RESET}No regions available. Enable and fetch a list in ${COLOR_YELLOW}Lists management${RESET}"
+		return 0
+	fi
+	items+=("Back")
+
+	while true; do
+		MENU_START=$start
+		MENU_MSG="$msg"
+		msg=""
+		select_menu "Select region" "[↑/↓ Navigate | Enter/→ Select | ←/Esc Back]" "${items[@]}" || return 0
+		idx=$MENU_INDEX
+		start=$idx
+		if ((idx >= ${#names[@]})); then
+			return 0
+		fi
+		name="${names[$idx]}"
+
+		if [[ "$name" == "Russia" ]]; then
+			cmd=$(yq -r '.[] | "\(.address)|\(.port)|\(.City)|RU|\(.Name)"' \
+				"$IPERF_SERVERS_RU_FILE_LOCATION" 2>/dev/null || true)
+		else
+			cmd=$(jq -r --arg choose "$name" \
+				'.[] | select(.CONTINENT == $choose)
+				 | "\(."IP/HOST")|\((.PORT | tostring | split("-")[0]))|\(.SITE)|\(.COUNTRY)|\(.PROVIDER)"' \
+				"$IPERF_SERVERS_GLOBAL_FILE_LOCATION" 2>/dev/null || true)
+		fi
+
+		if [[ -z "$cmd" ]]; then
+			msg="${COLOR_RED}Error: ${RESET}No servers found for $name"
+		else
+			find_best_server "$cmd"
+		fi
+	done
 }
 
 function check_package_manager {
-
 	if command -v apt >/dev/null; then
 		echo "apt"
 	elif command -v dnf >/dev/null; then
@@ -992,36 +1151,41 @@ function check_package_manager {
 	else
 		echo "unknown"
 	fi
-
 }
 
 function run_region {
+	local cmd
 	if [[ "$REGION" == "Russia" ]]; then
-		local cmd
-		if ! cmd=$(yq -r '.[] | "\(.address)|\(.port)|\(.City)|RU|\(.Name)"' "$IPERF_SERVERS_RU_FILE_LOCATION" 2>/dev/null); then
+		if [[ ! -s "$IPERF_SERVERS_RU_FILE_LOCATION" ]] ||
+			! cmd=$(yq -r '.[] | "\(.address)|\(.port)|\(.City)|RU|\(.Name)"' "$IPERF_SERVERS_RU_FILE_LOCATION" 2>/dev/null); then
 			echo "Fetch servers first: run with --fetch."
 			exit 1
 		fi
-		cli_find_best_server "$cmd"
 	else
-		local cmd
-		if ! cmd=$(jq -r --arg choose "$REGION" \
-			'.[] | select(.CONTINENT == $choose)."IP/HOST"+"|"+."PORT"+"|"+."SITE"+"|"+."COUNTRY"+"|"+."PROVIDER"' \
-			"$IPERF_SERVERS_GLOBAL_FILE_LOCATION" 2>/dev/null); then
+		if [[ ! -s "$IPERF_SERVERS_GLOBAL_FILE_LOCATION" ]] ||
+			! cmd=$(jq -r --arg choose "$REGION" \
+				'.[] | select(.CONTINENT == $choose)
+				 | "\(."IP/HOST")|\((.PORT | tostring | split("-")[0]))|\(.SITE)|\(.COUNTRY)|\(.PROVIDER)"' \
+				"$IPERF_SERVERS_GLOBAL_FILE_LOCATION" 2>/dev/null); then
 			echo "Fetch servers first: run with --fetch."
 			exit 1
 		fi
-		cli_find_best_server "$cmd"
 	fi
+
+	if [[ -z "$cmd" ]]; then
+		echo "No servers found for region '$REGION'."
+		exit 1
+	fi
+	cli_find_best_server "$cmd"
 }
 
 if [[ $# -gt 0 ]]; then
 	MODE="CLI"
 	set -euo pipefail
+	servers_counts=$(get_servers_count)
 	parse_args "$@"
 	cli_check_requirements
 	cli_check_for_updates
-	servers_counts=$(get_servers_count)
 
 	if $DO_FETCH; then
 		fetch_iperf_cli
@@ -1038,20 +1202,28 @@ else
 	MODE="TUI"
 
 	init_tui_terminal
+
 	trap cleanup EXIT
 	trap on_interrupt INT TERM
-	trap 'stop_spinner; exit 130' INT
+
+	if [[ -f "$LISTS_CONF" ]]; then
+		while IFS='=' read -r conf_key conf_val; do
+			if [[ "$conf_key" == "global" || "$conf_key" == "ru" ]] && [[ "$conf_val" == "0" || "$conf_val" == "1" ]]; then
+				LIST_ENABLED[$conf_key]=$conf_val
+			fi
+		done <"$LISTS_CONF"
+	fi
 
 	check_requirements >/dev/null
 	check_for_updates
 
 	while true; do
-		ui_cursor_home
 		draw
 
 		IFS= read -rsn1 key
 		if [[ "$key" == $'\x1b' ]]; then
-			IFS= read -rsn2 -t 0.05 rest
+			rest=""
+			IFS= read -rsn2 -t 0.05 rest || true
 			[[ -n "$rest" ]] && key+="$rest"
 		fi
 
@@ -1071,25 +1243,17 @@ else
 			fi
 			;;
 		$'\x1b[C' | "")
-
-			if [[ ! ${#missing_packages[@]} == 0 ]]; then
+			msgbar=""
+			if ((${#missing_packages[@]} != 0)); then
 				case "${options_install[$selected]}" in
 				"Install")
 					pm=$(check_package_manager)
 
 					case "$pm" in
-					apt)
-						sudo apt install "${missing_packages[@]}" -y
-						;;
-					dnf)
-						sudo dnf install "${missing_packages[@]}"
-						;;
-					yum)
-						sudo yum install "${missing_packages[@]}"
-						;;
-					apk)
-						sudo apk add "${missing_packages[@]}"
-						;;
+					apt) sudo apt install -y "${missing_packages[@]}" ;;
+					dnf) sudo dnf install -y "${missing_packages[@]}" ;;
+					yum) sudo yum install -y "${missing_packages[@]}" ;;
+					apk) sudo apk add "${missing_packages[@]}" ;;
 					*)
 						echo -e "Failed to detect package manager. Supported package managers: apt, yum, dnf, apk\nRequired packages:"
 						printf "%s\n" "${missing_packages[@]}"
@@ -1097,51 +1261,40 @@ else
 						exit 1
 						;;
 					esac
-					read -n 1 -s -r -p "Success! Start script again to continue"
-					exit 1
+					read -n 1 -s -r -p "Done! Start the script again to continue"
+					exit 0
 					;;
 				"Quit")
-					exit 1
+					exit 0
 					;;
 				esac
 			else
-				set +u
 				case "${options[$selected]}" in
 				"Run test")
-					if [[ "$servers_loaded_total" == "0" ]]; then
-						status "set" "fetch servers first"
+					if [[ "$(get_servers_count)" -eq 0 ]]; then
+						status "set" "${COLOR_RED}Error: ${RESET}No enabled server lists. Enable and fetch at least one in ${COLOR_YELLOW}Lists management${RESET}"
 					else
 						choose_region
 					fi
-					set -u
 					;;
-
 				"Favourite servers")
 					select_favourite
 					;;
-
 				"iperf3 params editor")
 					iperf3_params_editor
-					ui_cursor_home
-					ui_clear_below
 					;;
-
 				"Direction"*)
 					iperf_test_direction
 					;;
-				"Fetch newest servers")
-					draw
-					fetch_iperf
+				"Lists management")
+					lists_management
 					;;
 				"Quit")
 					break
 					;;
 				esac
 			fi
-
 			;;
 		esac
 	done
-
-	tput cnorm
 fi
